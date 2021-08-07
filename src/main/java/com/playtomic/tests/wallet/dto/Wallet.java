@@ -1,5 +1,6 @@
 package com.playtomic.tests.wallet.dto;
 
+import com.playtomic.tests.wallet.exception.BusinessException;
 import com.sun.istack.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,6 +36,12 @@ public class Wallet {
     }
 
     public void subtractAmountToCurrentBalance(BigDecimal amount) {
-        setCurrentBalance(this.currentBalance.subtract(amount));
+        BigDecimal newCurrentBalance = this.currentBalance.subtract(amount);
+
+        if (newCurrentBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("There is not enough balance to charge wallet with id " + this.getId() + " the amount of " + amount);
+        } else {
+            setCurrentBalance(newCurrentBalance);
+        }
     }
 }
