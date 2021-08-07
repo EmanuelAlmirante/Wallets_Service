@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -60,10 +61,12 @@ public class WalletServiceImpl implements WalletService {
         readWriteLock.writeLock().lock();
 
         try {
+            verifyRechargeIsValid(recharge);
+
             Wallet wallet = getWalletById(walletId);
             verifyWalletExists(wallet, walletId);
 
-            verifyChargeIsValid(recharge);
+            verifyStripeServiceChargeIsValid(recharge);
 
             BigDecimal amount = recharge.getAmount();
             wallet.addAmountToCurrentBalance(amount);
@@ -81,6 +84,10 @@ public class WalletServiceImpl implements WalletService {
         readWriteLock.writeLock().lock();
 
         try {
+            if (amount == null) {
+                throw new BusinessException("Charge amount cannot be null");
+            }
+
             Wallet wallet = getWalletById(walletId);
             verifyWalletExists(wallet, walletId);
 
@@ -98,6 +105,16 @@ public class WalletServiceImpl implements WalletService {
         return walletOptional.orElse(null);
     }
 
+    private void verifyRechargeIsValid(Recharge recharge) {
+        if (recharge.getCreditCardNumber() == null) {
+            throw new BusinessException("Credit card number cannot be null");
+        }
+
+        if (recharge.getAmount() == null) {
+            throw new BusinessException("Amount if recharge cannot be null");
+        }
+    }
+
     private void verifyWalletExists(Wallet wallet, String walletId) {
         if (wallet == null) {
             log.error("Wallet with id " + walletId + " does not exist.");
@@ -106,7 +123,7 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    private void verifyChargeIsValid(Recharge recharge) {
+    private void verifyStripeServiceChargeIsValid(Recharge recharge) {
         String creditCardNumber = recharge.getCreditCardNumber();
         BigDecimal amount = recharge.getAmount();
 
