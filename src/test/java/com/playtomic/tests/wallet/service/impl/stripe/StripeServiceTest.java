@@ -1,9 +1,7 @@
-package com.playtomic.tests.wallet.service.impl;
+package com.playtomic.tests.wallet.service.impl.stripe;
 
-
-import com.playtomic.tests.wallet.service.stripe.StripeServiceException;
 import com.playtomic.tests.wallet.service.stripe.StripeService;
-
+import com.playtomic.tests.wallet.service.stripe.StripeServiceException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
