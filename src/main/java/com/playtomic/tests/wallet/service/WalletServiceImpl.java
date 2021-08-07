@@ -13,9 +13,12 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class WalletServiceImpl implements WalletService {
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Logger log = LoggerFactory.getLogger(WalletServiceImpl.class);
 
     private final WalletRepository walletRepository;
@@ -29,42 +32,64 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public Wallet createWallet(Wallet wallet) {
-        log.info("Create wallet method invoked");
+        log.info("Creating wallet with an initial current balance of " + wallet.getCurrentBalance());
 
         return walletRepository.save(wallet);
     }
 
     @Override
     public Wallet getWallet(String walletId) {
-        log.info("Getting walled with id - " + walletId);
+        log.info("Getting wallet with id - " + walletId);
 
-        Wallet wallet = getWalletById(walletId);
-        verifyWalletExists(wallet, walletId);
+        readWriteLock.readLock().lock();
 
-        return wallet;
+        try {
+            Wallet wallet = getWalletById(walletId);
+            verifyWalletExists(wallet, walletId);
+
+            return wallet;
+        } finally {
+            readWriteLock.readLock().unlock();
+        }
     }
 
     @Override
     public void rechargeWallet(String walletId, Recharge recharge) {
-        Wallet wallet = getWalletById(walletId);
-        verifyWalletExists(wallet, walletId);
+        log.info("Recharging wallet with id - " + walletId + " with an amount of " + recharge.getAmount());
 
-        verifyChargeIsValid(recharge);
+        readWriteLock.writeLock().lock();
 
-        BigDecimal amount = recharge.getAmount();
-        wallet.addAmountToCurrentBalance(amount);
+        try {
+            Wallet wallet = getWalletById(walletId);
+            verifyWalletExists(wallet, walletId);
 
-        walletRepository.save(wallet);
+            verifyChargeIsValid(recharge);
+
+            BigDecimal amount = recharge.getAmount();
+            wallet.addAmountToCurrentBalance(amount);
+
+            walletRepository.save(wallet);
+        } finally {
+            readWriteLock.writeLock().unlock();
+        }
     }
 
     @Override
     public void chargeWallet(String walletId, BigDecimal amount) {
-        Wallet wallet = getWalletById(walletId);
-        verifyWalletExists(wallet, walletId);
+        log.info("Charging wallet with id - " + walletId + " with an amount of " + amount);
 
-        wallet.subtractAmountToCurrentBalance(amount);
+        readWriteLock.writeLock().lock();
 
-        walletRepository.save(wallet);
+        try {
+            Wallet wallet = getWalletById(walletId);
+            verifyWalletExists(wallet, walletId);
+
+            wallet.subtractAmountToCurrentBalance(amount);
+
+            walletRepository.save(wallet);
+        } finally {
+            readWriteLock.writeLock().unlock();
+        }
     }
 
     private Wallet getWalletById(String walletId) {
