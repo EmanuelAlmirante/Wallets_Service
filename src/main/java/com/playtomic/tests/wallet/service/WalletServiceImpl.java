@@ -45,10 +45,7 @@ public class WalletServiceImpl implements WalletService {
         readWriteLock.readLock().lock();
 
         try {
-            Wallet wallet = getWalletById(walletId);
-            verifyWalletExists(wallet, walletId);
-
-            return wallet;
+            return getWalletById(walletId);
         } finally {
             readWriteLock.readLock().unlock();
         }
@@ -64,8 +61,6 @@ public class WalletServiceImpl implements WalletService {
             verifyRechargeIsValid(recharge);
 
             Wallet wallet = getWalletById(walletId);
-            verifyWalletExists(wallet, walletId);
-
             verifyStripeServiceChargeIsValid(recharge);
 
             BigDecimal amount = recharge.getAmount();
@@ -89,8 +84,6 @@ public class WalletServiceImpl implements WalletService {
             }
 
             Wallet wallet = getWalletById(walletId);
-            verifyWalletExists(wallet, walletId);
-
             wallet.subtractAmountToCurrentBalance(amount);
 
             walletRepository.save(wallet);
@@ -102,7 +95,11 @@ public class WalletServiceImpl implements WalletService {
     private Wallet getWalletById(String walletId) {
         Optional<Wallet> walletOptional = walletRepository.findById(walletId);
 
-        return walletOptional.orElse(null);
+        return walletOptional.orElseThrow(() -> {
+            log.error("Wallet with id " + walletId + " does not exist.");
+
+            throw new BusinessException("Wallet with id " + walletId + " does not exist.", walletId);
+        });
     }
 
     private void verifyRechargeIsValid(Recharge recharge) {
@@ -111,15 +108,7 @@ public class WalletServiceImpl implements WalletService {
         }
 
         if (recharge.getAmount() == null) {
-            throw new BusinessException("Amount if recharge cannot be null");
-        }
-    }
-
-    private void verifyWalletExists(Wallet wallet, String walletId) {
-        if (wallet == null) {
-            log.error("Wallet with id " + walletId + " does not exist.");
-
-            throw new BusinessException("Wallet with id " + walletId + " does not exist.", walletId);
+            throw new BusinessException("Amount of recharge cannot be null");
         }
     }
 
